@@ -39,7 +39,7 @@ def load_geojson_entries(geojson_path: Path):
 def extract_patch(image: np.ndarray, cx: int, cy: int, half: int = PATCH_HALF):
     """
     Extract a (2*half by 2*half) patch centred at (cx, cy).
-    Zeropadif the bounding box exceeds image boundaries.
+    Zeropad if the bounding box exceeds image boundaries.
     """
     h, w = image.shape[:2]
     patch_size = 2 * half
@@ -121,23 +121,6 @@ def save_patches(entries, out_dir: Path, labels_dict: dict | None = None):
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
-def split_images_for_class(image_stems: list[str],
-                           train_ratio: float = 0.6,
-                           val_ratio: float = 0.17):
-    """
-    Split a list of image stems into train / val / contrastive groups.
-    Remaining images go to contrastive.
-    """
-    random.shuffle(image_stems)
-    n = len(image_stems)
-    n_train = max(1, int(n * train_ratio))
-    n_val = max(1, int(n * val_ratio))
-    return (
-        image_stems[:n_train],
-        image_stems[n_train:n_train + n_val],
-        image_stems[n_train + n_val:],
-    )
-
 
 def sample_from_image_group(image_dict: dict, stems: list[str], n: int):
     """
@@ -159,47 +142,71 @@ def sample_from_image_group(image_dict: dict, stems: list[str], n: int):
 def main():
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-
-    print("Collecting nuclei from TRAIN split …")
+    print("Collecting nuclei from TRAIN and VALIDATION splits …")
     train_by_img = collect_nuclei_by_image("train")
-    print("Collecting nuclei from VALIDATION split …")
     val_by_img = collect_nuclei_by_image("validation")
 
-    all_by_img: dict[str, dict[str, list]] = defaultdict(dict)
+    # 1. Identify ALL unique train image stems and validation image stems globally
+    train_unique_stems = set()
     for cls in CLASSES_TO_EXTRACT:
-        for stem, entries in train_by_img.get(cls, {}).items():
-            all_by_img[cls][stem] = entries
-        for stem, entries in val_by_img.get(cls, {}).items():
-            all_by_img[cls][stem] = entries
+        for stem in train_by_img.get(cls, {}).keys():
+            train_unique_stems.add(stem)
+            
+    val_unique_stems = set()
+    for cls in CLASSES_TO_EXTRACT:
+        for stem in val_by_img.get(cls, {}).keys():
+            val_unique_stems.add(stem)
 
-    print("\n── Available nuclei per class ──")
-    for cls in sorted(all_by_img):
-        total = sum(len(v) for v in all_by_img[cls].values())
-        n_images = len(all_by_img[cls])
-        print(f"  {cls}: {total} nuclei across {n_images} images")
+    # 2. Perform a GLOBAL split on the train stems into train vs contrastive (no leakage!)
+    train_stems_list = sorted(list(train_unique_stems))
+    val_stems = sorted(list(val_unique_stems))
+    
+    random.shuffle(train_stems_list)
+    n_train = max(1, int(len(train_stems_list) * 0.7))
+    train_stems = train_stems_list[:n_train]
+    contr_stems = train_stems_list[n_train:]
 
+    print(f"\n── Global Split Stats ──")
+    print(f"  Training images:    {len(train_stems)} (from Dataset_Splits/train)")
+    print(f"  Contrastive images: {len(contr_stems)} (from Dataset_Splits/train)")
+    print(f"  Validation images:  {len(val_stems)} (from Dataset_Splits/validation)")
 
     train_entries = []
     val_entries = []
     contrastive_entries = []
 
-    for cls in sorted(all_by_img):
-        image_dict = all_by_img[cls]
-        stems = list(image_dict.keys())
+    # 3. For each class, sample only from the images assigned to that split
+    for cls in sorted(CLASSES_TO_EXTRACT):
+        train_class_data = train_by_img.get(cls, {})
+        val_class_data = val_by_img.get(cls, {})
+        
+        # Filter the available nuclei by the global split
+        t_pool = [e for s in train_stems if s in train_class_data for e in train_class_data[s]]
+        c_pool = [e for s in contr_stems if s in train_class_data for e in train_class_data[s]]
+        v_pool = [e for s in val_stems if s in val_class_data for e in val_class_data[s]]
 
-        train_stems, val_stems, contr_stems = split_images_for_class(stems)
-        print(f"\n  {cls}: {len(train_stems)} train images, "
-              f"{len(val_stems)} val images, {len(contr_stems)} contrastive images")
+        print(f"\n  Processing {cls}:")
+        print(f"    Available: {len(t_pool)} train, {len(v_pool)} val, {len(c_pool)} contr")
 
-        t_sel = sample_from_image_group(image_dict, train_stems, TRAIN_PER_CLASS)
-        v_sel = sample_from_image_group(image_dict, val_stems, VAL_PER_CLASS)
-        c_sel = sample_from_image_group(image_dict, contr_stems, CONTRASTIVE_PER_CLASS)
+        # Use a helper to sample or replace if pool is too small
+        def get_samples(pool, count, name):
+            if not pool:
+                print(f"    [ERROR] No nuclei for {cls} in {name} split!")
+                return []
+            if len(pool) < count:
+                print(f"    [WARN] Only {len(pool)} nuclei for {cls} in {name}. Sampling with replacement.")
+                return random.choices(pool, k=count)
+            return random.sample(pool, k=count)
+
+        t_sel = get_samples(t_pool, TRAIN_PER_CLASS, "train")
+        c_sel = get_samples(c_pool, CONTRASTIVE_PER_CLASS, "contrastive")
+        v_sel = get_samples(v_pool, VAL_PER_CLASS, "validation")
 
         train_entries.extend([(p, x, y, cls) for p, x, y in t_sel])
-        val_entries.extend([(p, x, y, cls) for p, x, y in v_sel])
         contrastive_entries.extend([(p, x, y, cls) for p, x, y in c_sel])
+        val_entries.extend([(p, x, y, cls) for p, x, y in v_sel])
 
-
+    # 4. Save and export labels
     train_labels = {}
     val_labels = {}
 
@@ -217,11 +224,7 @@ def main():
     with open(OUTPUT_ROOT / "val_labels.json", "w") as f:
         json.dump(val_labels, f, indent=2)
 
-    print("\n✓ Dataset created at:", OUTPUT_ROOT.resolve())
-    print(f"  Train labels: {len(train_labels)} entries")
-    print(f"  Val labels:   {len(val_labels)} entries")
-    print(f"  Contrastive:  {len(contrastive_entries)} patches (no labels)")
-
+    print("\n Dataset created successfully")
 
 if __name__ == "__main__":
     main()
