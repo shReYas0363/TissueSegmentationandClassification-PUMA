@@ -10,7 +10,14 @@ pip install -r requirements.txt
 ```
 
 Run the commands below from the repository root.
+**To create dataset for task 1:**
+```bash
+python create_masks.py input_dir output_dir
+```
 
+**Task 1a – End to End UNet**
+- follow task1/UNetEndtoEnd/task1.ipynb for repeating the experiment
+- 
 **Task 1b – Pretrained Autoencoder**
 Folder: `task1/PretrainedAutoencoder/`
 
@@ -69,6 +76,10 @@ Config notes:
 - `model.pretrained_encoder_path` in the segmentation config is task-local and points to `outputs/autoencoder/checkpoints/best_encoder.pt` inside the Task 1 folder.
 - Override paths from the CLI if you intentionally want to use data or outputs outside the default task-local layout.
 
+**To create dataset for task 2:**
+```bash
+python create_nuclei_dataset.py
+```
 **Task 2a – End-to-End Classifier**
 Folder: `task2/ClassifierEndtoEnd/`
 
@@ -128,3 +139,6 @@ Config notes:
 - Task 2 uses fixed label mapping `tumor=0`, `lymphocyte=1`, `histiocyte=2`.
 - The dataset creation script writes extracted `100x100` patches into the task-local `task2_nuclei_patches/` folder.
 - Training and evaluation resize patches to `224x224` inside the transform pipeline.
+
+**Task 2b – Contrastive Learning Pretraining**
+- follow task2/ContrastiveLearningPretrained/task2.ipynb for repeating the experiment
