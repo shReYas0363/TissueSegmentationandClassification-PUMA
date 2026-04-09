@@ -1,11 +1,4 @@
 # TissueSegmentationandClassification-PUMA
-This repository is intentionally split into two self-contained task folders:
-
-- `task1/`
-- `task1/PretrainedAutoencoder/`
-- `task2/`
-- `task2/ClassifierEndtoEnd/`
-
 
 Install dependencies once from the repository root:
 
