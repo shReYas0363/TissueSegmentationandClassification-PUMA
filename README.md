@@ -17,7 +17,7 @@ python create_masks.py input_dir output_dir
 
 **Task 1a – End to End UNet**
 - follow task1/UNetEndtoEnd/task1.ipynb for repeating the experiment
-- 
+
 **Task 1b – Pretrained Autoencoder**
 Folder: `task1/PretrainedAutoencoder/`
 
