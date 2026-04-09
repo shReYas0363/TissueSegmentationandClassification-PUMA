@@ -1,0 +1,11 @@
+{
+  "trainable_parameters": 27822435,
+  "total_parameters": 27822435,
+  "device": "cuda",
+  "mixed_precision": true,
+  "class_names": [
+    "tumor",
+    "lymphocyte",
+    "histiocyte"
+  ]
+}

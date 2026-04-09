@@ -1,0 +1,103 @@
+experiment:
+  name: segmentation_unet_like
+
+seed: 42
+device: auto
+mixed_precision: true
+
+dataset:
+  root: Dataset_Splits
+  processed_mask_root: processed_masks
+  image_subdir: image
+  tissue_subdir: tissue
+  mask_extension: .png
+  train_split: train
+  val_split: validation
+  test_split: test
+  patch_size: 512
+  fallback_patch_size: 256
+  full_image_mode: false
+  train_samples_per_epoch: 1536
+  val_samples_per_epoch: 384
+  num_classes: 3
+  class_names:
+    - other
+    - tumor
+    - stroma
+
+dataloader:
+  batch_size: 3
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: false
+
+output:
+  root: outputs/segmentation_unet
+  save_top_k: 1
+
+model:
+  name: unet_like_decoder
+  encoder_base_channels: 32
+  encoder_num_stages: 4
+  decoder_channels:
+    - 384
+    - 192
+    - 96
+    - 48
+  norm_type: batch
+  activation: relu
+  dropout: 0.0
+  freeze_encoder: false
+  pretrained_encoder_path: outputs/autoencoder/checkpoints/best_encoder.pt
+
+loss:
+  ce_weight: 1.0
+  dice_weight: 1.0
+  class_weights: null
+  smooth: 1.0
+
+optimizer:
+  name: adam
+  lr: 0.0003
+  encoder_lr_scale: 0.1
+  weight_decay: 0.00001
+
+scheduler:
+  name: plateau
+  mode: max
+  factor: 0.5
+  patience: 3
+  min_lr: 0.000001
+
+train:
+  epochs: 35
+  grad_clip_norm: 1.0
+  early_stopping_patience: 8
+  log_interval: 20
+  sample_visualizations: 4
+
+augmentation:
+  train_hflip: true
+  train_vflip: true
+  train_rotate90: true
+
+sampling:
+  max_retries: 5
+  stroma_min_fraction: 0.05
+  other_min_fraction: 0.05
+  tumor_max_fraction: 0.95
+  extreme_tumor_accept_prob: 0.25
+
+preprocessing:
+  output_root: processed_masks
+  num_workers: 4
+  overlay_alpha: 0.45
+  preview_count: 6
+
+evaluation:
+  split: test
+  save_overlay_count: 8
+  sliding_window:
+    patch_size: 512
+    overlap: 0.25
+    batch_size: 2

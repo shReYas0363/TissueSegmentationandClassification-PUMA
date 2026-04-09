@@ -1,0 +1,79 @@
+experiment:
+  name: task2a_convnext_tiny
+
+seed: 42
+device: auto
+mixed_precision: true
+
+dataset:
+  generated_root: task2_nuclei_patches
+  task2_test_root: Task2_Test_Set
+  train_split: train
+  val_split: val
+  saved_patch_size: 100
+  input_size: 224
+  class_names:
+    - tumor
+    - lymphocyte
+    - histiocyte
+  label_mapping:
+    tumor: 0
+    lymphocyte: 1
+    histiocyte: 2
+
+dataloader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: false
+
+output:
+  root: outputs/task2_convnext_tiny
+
+model:
+  name: convnext_tiny
+  weights: default
+
+loss:
+  name: cross_entropy
+
+optimizer:
+  name: adamw
+  lr: 0.0001
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+  t_max: 25
+  eta_min: 0.000001
+
+train:
+  epochs: 25
+  grad_clip_norm: 1.0
+  early_stopping_patience: 5
+  log_interval: 10
+
+augmentation:
+  train_hflip: true
+  train_vflip: true
+  train_rotate90: true
+
+normalization:
+  mean:
+    - 0.485
+    - 0.456
+    - 0.406
+  std:
+    - 0.229
+    - 0.224
+    - 0.225
+
+evaluation:
+  default_checkpoint: checkpoints/best.pt
+
+debug:
+  max_train_batches_per_epoch: null
+  max_val_batches_per_epoch: null
+  max_train_samples: null
+  max_val_samples: null
+  max_test_samples: null

@@ -1,0 +1,80 @@
+experiment:
+  name: autoencoder_pretraining
+
+seed: 42
+device: auto
+mixed_precision: true
+
+dataset:
+  root: Dataset_Splits
+  processed_mask_root: processed_masks
+  image_subdir: image
+  tissue_subdir: tissue
+  mask_extension: .png
+  train_split: train
+  val_split: validation
+  test_split: test
+  patch_size: 512
+  fallback_patch_size: 256
+  full_image_mode: false
+  train_samples_per_epoch: 1024
+  val_samples_per_epoch: 256
+  num_classes: 3
+  class_names:
+    - other
+    - tumor
+    - stroma
+
+dataloader:
+  batch_size: 4
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: false
+
+output:
+  root: outputs/autoencoder
+  save_top_k: 1
+
+model:
+  encoder_base_channels: 32
+  encoder_num_stages: 4
+  norm_type: batch
+  activation: relu
+  dropout: 0.0
+
+loss:
+  name: l1
+
+optimizer:
+  name: adam
+  lr: 0.0003
+  weight_decay: 0.00001
+
+scheduler:
+  name: cosine
+  t_max: 40
+  eta_min: 0.000001
+
+train:
+  epochs: 40
+  grad_clip_norm: 1.0
+  early_stopping_patience: 10
+  log_interval: 20
+  sample_visualizations: 4
+
+augmentation:
+  train_hflip: true
+  train_vflip: true
+  train_rotate90: true
+
+preprocessing:
+  output_root: processed_masks
+  num_workers: 4
+  overlay_alpha: 0.45
+  preview_count: 6
+
+evaluation:
+  sliding_window:
+    patch_size: 512
+    overlap: 0.25
+    batch_size: 2

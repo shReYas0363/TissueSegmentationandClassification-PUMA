@@ -1,0 +1,9 @@
+{
+  "monitor_metric": "val_macro_f1",
+  "best_monitor_value": 0.7723694915930936,
+  "best_epoch": 6,
+  "best_val_accuracy": 0.7719047619058481,
+  "best_val_macro_f1": 0.7723694915930936,
+  "trainable_parameters": 27822435,
+  "total_parameters": 27822435
+}
