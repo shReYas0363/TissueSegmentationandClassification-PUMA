@@ -1,5 +1,5 @@
 # TissueSegmentationandClassification-PUMA
-
+Contributors: Task 1a and Task 2b - Shreyas ; Task 1b and Task 2a - Venkatesan 
 Install dependencies once from the repository root:
 
 ```bash
